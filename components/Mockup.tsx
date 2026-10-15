@@ -5,79 +5,111 @@ const Line = ({ w, dark = false }: { w: string; dark?: boolean }) => (
 );
 
 export default function Mockup({ t }: { t: Template }) {
-  const a = t.accent;
+  const a = t.accent || "#027cc7";
   const tint = `${a}1f`;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-ink/10 bg-white">
-      <div className="flex items-center gap-1.5 border-b border-ink/10 bg-mist px-3 py-2">
-        <i className="size-2 rounded-full bg-ink/20" />
-        <i className="size-2 rounded-full bg-ink/20" />
-        <i className="size-2 rounded-full bg-ink/20" />
-        <span className="ml-2 truncate rounded bg-white px-2 py-0.5 text-[10px] text-ink/50">
-          {t.slug}.codehelio.com
-        </span>
+    <div className="overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-ink/10 bg-mist px-3 py-2">
+        <div className="flex items-center gap-1.5">
+          <i className="size-2 rounded-full bg-rose-400" />
+          <i className="size-2 rounded-full bg-amber-400" />
+          <i className="size-2 rounded-full bg-emerald-400" />
+          <span className="ml-2 truncate rounded bg-white px-2 py-0.5 text-[10px] font-medium text-ink/60 border border-ink/10">
+            {t.slug}.codehelio.com
+          </span>
+        </div>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/40">Live Preview</span>
       </div>
 
-      <div className="relative h-56 overflow-hidden" aria-hidden>
-        <div className="mockup-scroll absolute inset-x-0 top-0 space-y-4 pb-4">
-          {/* nav */}
-          <div className="flex items-center justify-between px-4 pt-3">
-            <div className="h-4 w-14 rounded" style={{ background: a }} />
-            <div className="flex gap-2"><Line w="24px" /><Line w="24px" /><Line w="24px" /></div>
+      <div className="relative h-56 overflow-hidden bg-slate-50" aria-hidden>
+        {t.imageUrl ? (
+          <div className="group-hover:scale-105 transition-transform duration-500 h-full w-full relative">
+            <img
+              src={t.imageUrl}
+              alt={t.name}
+              className="h-full w-full object-cover object-top"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-
-          {/* hero */}
-          {t.layout === "split" && (
-            <div className="mx-4 grid grid-cols-2 items-center gap-3 rounded-lg p-4" style={{ background: tint }}>
-              <div className="space-y-2">
-                <div className="h-3 w-4/5 rounded-full" style={{ background: a }} />
-                <div className="h-3 w-3/5 rounded-full" style={{ background: a }} />
-                <Line w="90%" /><Line w="70%" />
-                <div className="mt-2 h-5 w-16 rounded" style={{ background: a }} />
-              </div>
-              <div className="h-24 rounded-lg" style={{ background: a, opacity: 0.85 }} />
-            </div>
-          )}
-          {t.layout === "center" && (
-            <div className="mx-4 flex flex-col items-center gap-2 rounded-lg px-6 py-7" style={{ background: a }}>
-              <div className="h-3 w-3/4 rounded-full bg-white" />
-              <div className="h-3 w-1/2 rounded-full bg-white" />
-              <Line w="65%" dark />
-              <div className="mt-2 h-5 w-20 rounded bg-white" />
-            </div>
-          )}
-          {t.layout === "grid" && (
-            <div className="mx-4 space-y-2">
-              <div className="h-16 rounded-lg" style={{ background: a, opacity: 0.9 }} />
-              <div className="grid grid-cols-4 gap-2">
-                {[0, 1, 2, 3].map((i) => <div key={i} className="h-10 rounded" style={{ background: tint }} />)}
+        ) : (
+          <div className="mockup-scroll absolute inset-x-0 top-0 space-y-4 pb-4">
+            {/* nav */}
+            <div className="flex items-center justify-between px-4 pt-3">
+              <div className="h-4 w-14 rounded" style={{ background: a }} />
+              <div className="flex gap-2">
+                <Line w="24px" />
+                <Line w="24px" />
+                <Line w="24px" />
               </div>
             </div>
-          )}
 
-          {/* cards */}
-          <div className="grid grid-cols-3 gap-2 px-4">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="space-y-1.5 rounded-lg border border-ink/10 p-2">
-                <div className="h-10 rounded" style={{ background: tint }} />
-                <Line w="80%" /><Line w="55%" />
+            {/* hero */}
+            {t.layout === "split" && (
+              <div className="mx-4 grid grid-cols-2 items-center gap-3 rounded-lg p-4" style={{ background: tint }}>
+                <div className="space-y-2">
+                  <div className="h-3 w-4/5 rounded-full" style={{ background: a }} />
+                  <div className="h-3 w-3/5 rounded-full" style={{ background: a }} />
+                  <Line w="90%" />
+                  <Line w="70%" />
+                  <div className="mt-2 h-5 w-16 rounded shadow-sm" style={{ background: a }} />
+                </div>
+                <div className="h-24 rounded-lg shadow-sm" style={{ background: a, opacity: 0.85 }} />
               </div>
-            ))}
-          </div>
+            )}
+            {t.layout === "center" && (
+              <div className="mx-4 flex flex-col items-center gap-2 rounded-lg px-6 py-7 shadow-sm" style={{ background: a }}>
+                <div className="h-3 w-3/4 rounded-full bg-white" />
+                <div className="h-3 w-1/2 rounded-full bg-white" />
+                <Line w="65%" dark />
+                <div className="mt-2 h-5 w-20 rounded bg-white shadow-sm" />
+              </div>
+            )}
+            {t.layout === "grid" && (
+              <div className="mx-4 space-y-2">
+                <div className="h-16 rounded-lg shadow-sm" style={{ background: a, opacity: 0.9 }} />
+                <div className="grid grid-cols-4 gap-2">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="h-10 rounded" style={{ background: tint }} />
+                  ))}
+                </div>
+              </div>
+            )}
 
-          {/* text + band */}
-          <div className="space-y-2 px-4"><Line w="60%" /><Line w="95%" /><Line w="85%" /></div>
-          <div className="mx-4 flex items-center justify-between rounded-lg px-4 py-4" style={{ background: a }}>
-            <div className="space-y-1.5"><Line w="90px" dark /><Line w="60px" dark /></div>
-            <div className="h-5 w-14 rounded bg-white" />
+            {/* cards */}
+            <div className="grid grid-cols-3 gap-2 px-4">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="space-y-1.5 rounded-lg border border-ink/10 bg-white p-2 shadow-xs">
+                  <div className="h-10 rounded" style={{ background: tint }} />
+                  <Line w="80%" />
+                  <Line w="55%" />
+                </div>
+              ))}
+            </div>
+
+            {/* text + band */}
+            <div className="space-y-2 px-4">
+              <Line w="60%" />
+              <Line w="95%" />
+              <Line w="85%" />
+            </div>
+            <div className="mx-4 flex items-center justify-between rounded-lg px-4 py-4 shadow-sm" style={{ background: a }}>
+              <div className="space-y-1.5">
+                <Line w="90px" dark />
+                <Line w="60px" dark />
+              </div>
+              <div className="h-5 w-14 rounded bg-white shadow-sm" />
+            </div>
+            <div className="grid grid-cols-2 gap-2 px-4">
+              <div className="h-14 rounded-lg" style={{ background: tint }} />
+              <div className="h-14 rounded-lg" style={{ background: tint }} />
+            </div>
+            <div className="mx-4 flex justify-between border-t border-ink/10 pt-3">
+              <Line w="50px" />
+              <Line w="80px" />
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 px-4">
-            <div className="h-14 rounded-lg" style={{ background: tint }} />
-            <div className="h-14 rounded-lg" style={{ background: tint }} />
-          </div>
-          <div className="mx-4 flex justify-between border-t border-ink/10 pt-3"><Line w="50px" /><Line w="80px" /></div>
-        </div>
+        )}
       </div>
     </div>
   );
