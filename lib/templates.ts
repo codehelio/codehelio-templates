@@ -10,6 +10,8 @@ export type Template = {
   layout: Layout;
   demoUrl: string;
   price: string;
+  priceUsd: number;
+  priceLkr: number;
   imageUrl?: string;
   badge?: string;
 };
@@ -36,6 +38,8 @@ export const initialTemplates: Template[] = [
     layout: "split",
     demoUrl: "https://demo.codehelio.com/grand-azure",
     price: "$99",
+    priceUsd: 99,
+    priceLkr: 32670,
     badge: "Popular",
   },
   {
@@ -48,6 +52,8 @@ export const initialTemplates: Template[] = [
     layout: "grid",
     demoUrl: "https://demo.codehelio.com/carepoint",
     price: "$89",
+    priceUsd: 89,
+    priceLkr: 29370,
     badge: "Healthcare",
   },
   {
@@ -60,6 +66,8 @@ export const initialTemplates: Template[] = [
     layout: "center",
     demoUrl: "https://demo.codehelio.com/cartwell",
     price: "$119",
+    priceUsd: 119,
+    priceLkr: 39270,
     badge: "Best Seller",
   },
   {
@@ -72,6 +80,8 @@ export const initialTemplates: Template[] = [
     layout: "grid",
     demoUrl: "https://demo.codehelio.com/freshmart",
     price: "$109",
+    priceUsd: 109,
+    priceLkr: 35970,
     badge: "Fresh Deals",
   },
   {
@@ -84,6 +94,8 @@ export const initialTemplates: Template[] = [
     layout: "split",
     demoUrl: "https://demo.codehelio.com/saffron-table",
     price: "$79",
+    priceUsd: 79,
+    priceLkr: 26070,
   },
   {
     slug: "studio-lune",
@@ -95,6 +107,8 @@ export const initialTemplates: Template[] = [
     layout: "center",
     demoUrl: "https://demo.codehelio.com/studio-lune",
     price: "$69",
+    priceUsd: 69,
+    priceLkr: 22770,
   },
   {
     slug: "keystone-homes",
@@ -106,6 +120,8 @@ export const initialTemplates: Template[] = [
     layout: "grid",
     demoUrl: "https://demo.codehelio.com/keystone-homes",
     price: "$129",
+    priceUsd: 129,
+    priceLkr: 42570,
   },
   {
     slug: "folio-creative",
@@ -117,10 +133,11 @@ export const initialTemplates: Template[] = [
     layout: "split",
     demoUrl: "https://demo.codehelio.com/folio",
     price: "$49",
+    priceUsd: 49,
+    priceLkr: 16170,
   },
 ];
 
-// Re-export templates for backward compatibility
 export const templates = initialTemplates;
 
 export const categories = [

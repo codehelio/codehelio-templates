@@ -122,11 +122,18 @@ export default function AddTemplateModal({
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
+    const num = parseFloat(price.replace(/[^0-9.]/g, "")) || 89;
+    const isLkr = price.toLowerCase().includes("rs") || price.toLowerCase().includes("lkr");
+    const priceUsd = isLkr ? Math.round(num / 330) : num;
+    const priceLkr = isLkr ? num : Math.round(num * 330);
+
     const newTemplate: Template = {
       slug: `${slug}-${Math.floor(100 + Math.random() * 900)}`,
       name: name.trim(),
       category,
       price: formattedPrice,
+      priceUsd,
+      priceLkr,
       demoUrl: demoUrl.startsWith("http") ? demoUrl : `https://${demoUrl}`,
       blurb: description.trim(),
       pages: pages.trim() || "Home, About, Services, Contact",

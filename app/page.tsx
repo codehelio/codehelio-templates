@@ -10,6 +10,11 @@ import {
 } from "@/lib/templates";
 import TemplateCard from "@/components/TemplateCard";
 import AddTemplateModal from "@/components/AddTemplateModal";
+import LiveDemoModal from "@/components/LiveDemoModal";
+import UserProfileModal from "@/components/UserProfileModal";
+import ApplyModal from "@/components/ApplyModal";
+import { useCurrency } from "@/lib/currency";
+import { UserProfile, getStoredProfile, setStoredProfile } from "@/lib/supabase";
 import {
   Plus,
   Search,
@@ -18,7 +23,6 @@ import {
   ShieldCheck,
   Zap,
   Globe2,
-  CheckCircle2,
   LogOut,
   User,
   SlidersHorizontal,
@@ -32,6 +36,8 @@ import {
   Home,
   Briefcase,
   Layers,
+  Crown,
+  Lock,
 } from "lucide-react";
 import Swal from "sweetalert2";
 
@@ -46,11 +52,25 @@ export default function Page() {
   const [templateList, setTemplateList] = useState<Template[]>(initialTemplates);
   const [active, setActive] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [authUser, setAuthUser] = useState<{ name: string; email: string; role?: string } | null>(null);
 
-  // Load custom templates and user session from localStorage
+  // Modals state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isLiveDemoOpen, setIsLiveDemoOpen] = useState(false);
+  const [selectedDemoTemplate, setSelectedDemoTemplate] = useState<Template | null>(null);
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [selectedApplyTemplate, setSelectedApplyTemplate] = useState<Template | null>(null);
+
+  // Auth User State
+  const [authUser, setAuthUser] = useState<UserProfile | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Currency Hook
+  const { currency, toggleCurrency, formatPrice } = useCurrency();
+
+  // Load custom templates and user session from localStorage after mount
   useEffect(() => {
+    setMounted(true);
     try {
       const savedTemplates = localStorage.getItem("codehelio_custom_templates");
       if (savedTemplates) {
@@ -60,17 +80,21 @@ export default function Page() {
         }
       }
 
-      const savedUser = localStorage.getItem("codehelio_auth_user");
-      if (savedUser) {
-        setAuthUser(JSON.parse(savedUser));
+      const stored = getStoredProfile();
+      if (stored) {
+        setAuthUser(stored);
       }
     } catch {
-      // ignore JSON parse errors
+      // ignore
     }
   }, []);
 
+  // Determine user permissions
+  const isAdminOrCreator = authUser?.role === "admin" || authUser?.role === "creator";
+  const isChUser = authUser?.role === "ch_user";
+
   const handleLogout = () => {
-    localStorage.removeItem("codehelio_auth_user");
+    setStoredProfile(null);
     setAuthUser(null);
     Swal.fire({
       icon: "info",
@@ -100,7 +124,7 @@ export default function Page() {
     Swal.fire({
       icon: "success",
       title: "Template Published!",
-      html: `<b>${newTemplate.name}</b> (${newTemplate.category}) has been added with price <b>${newTemplate.price}</b>.`,
+      html: `<b>${newTemplate.name}</b> (${newTemplate.category}) has been added with price <b>${formatPrice(newTemplate.priceUsd, newTemplate.priceLkr)}</b>.`,
       confirmButtonColor: "#027cc7",
     });
   };
@@ -119,6 +143,96 @@ export default function Page() {
       return matchesCategory && matchesSearch;
     });
   }, [templateList, active, searchQuery]);
+
+  // Handler when clicking "Live Demo"
+  const handleOpenLiveDemo = (t: Template) => {
+    // If not signed in, prompt to sign in as required by user!
+    if (!authUser) {
+      Swal.fire({
+        icon: "warning",
+        title: "Sign In Required",
+        text: "Please sign in to view the interactive live demo.",
+        showCancelButton: true,
+        confirmButtonText: "Sign In Now",
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "#027cc7",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = "/login";
+        }
+      });
+      return;
+    }
+
+    // Signed in users can view the live demo with iframe!
+    setSelectedDemoTemplate(t);
+    setIsLiveDemoOpen(true);
+  };
+
+  // Handler when clicking "Apply"
+  const handleApplyClick = (t: Template) => {
+    // If not signed in
+    if (!authUser) {
+      Swal.fire({
+        icon: "warning",
+        title: "Sign In Required",
+        text: "Please sign in with your account to apply for a template.",
+        showCancelButton: true,
+        confirmButtonText: "Sign In",
+        confirmButtonColor: "#027cc7",
+      }).then((res) => {
+        if (res.isConfirmed) window.location.href = "/login";
+      });
+      return;
+    }
+
+    // If user is just standard "user" -> must upgrade to CH_USER (LKR 600 / USD 1.82)
+    if (authUser.role === "user") {
+      Swal.fire({
+        icon: "info",
+        title: "CH-User Membership Required",
+        html: `
+          <div style="text-align: left; font-size: 0.9rem;">
+            <p style="margin-bottom: 0.5rem;">To apply for <b>${t.name}</b> and get assigned a developer, you must be a verified <b>CH-User</b>.</p>
+            <p style="margin-bottom: 0.75rem; color:#027cc7; font-weight:700;">Membership Upgrade: LKR 600 (USD 1.82)</p>
+            <p style="color: #666; font-size: 0.8rem;">Upgrading unlocks email OTP verification and priority 48-hour launch assistance.</p>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "Upgrade Profile (LKR 600 / $1.82)",
+        cancelButtonText: "Later",
+        confirmButtonColor: "#027cc7",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setIsProfileModalOpen(true);
+        }
+      });
+      return;
+    }
+
+    // User is CH_USER, ADMIN, or CREATOR -> open ApplyModal with email OTP verification!
+    setSelectedApplyTemplate(t);
+    setIsApplyModalOpen(true);
+  };
+
+  const handleApplicationSuccess = (code: string, t: Template) => {
+    Swal.fire({
+      icon: "success",
+      title: "Application Dispatched!",
+      html: `
+        <div style="text-align: center;">
+          <p style="margin-bottom: 0.75rem;">Your application for <b>${t.name}</b> has been received.</p>
+          <div style="background: #eef7fd; border: 1.5px dashed #027cc7; padding: 0.75rem; border-radius: 0.75rem; margin-bottom: 0.75rem;">
+            <span style="font-size: 0.8rem; color: #555; display:block;">Your Client Tracking Code</span>
+            <strong style="font-size: 1.2rem; color: #02659f; letter-spacing: 0.05em;">${code}</strong>
+          </div>
+          <p style="font-size: 0.8rem; color: #666;">Our engineering team will contact you on WhatsApp / Phone within 2 business hours.</p>
+        </div>
+      `,
+      confirmButtonText: "Done",
+      confirmButtonColor: "#027cc7",
+    });
+  };
 
   // Category Icon helper
   const getCategoryIcon = (cat: string) => {
@@ -145,9 +259,15 @@ export default function Page() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fafbfc] text-ink antialiased selection:bg-helio/20">
+    <div
+      className="min-h-screen bg-[#fafbfc] text-ink antialiased selection:bg-helio/20"
+      suppressHydrationWarning
+    >
       {/* ---------- Sticky Modern Header ---------- */}
-      <header className="sticky top-0 z-40 border-b border-ink/10 bg-white/85 backdrop-blur-md transition-all">
+      <header
+        className="sticky top-0 z-40 border-b border-ink/10 bg-white/85 backdrop-blur-md transition-all"
+        suppressHydrationWarning
+      >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3.5">
           {/* Logo & Tag */}
           <div className="flex items-center gap-3">
@@ -167,40 +287,75 @@ export default function Page() {
           </div>
 
           {/* Header Action Cluster */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Currency Toggle Button (USD / LKR) as requested */}
+            <button
+              type="button"
+              onClick={toggleCurrency}
+              suppressHydrationWarning
+              className="inline-flex items-center rounded-xl border border-ink/15 bg-white px-3 py-1.5 text-xs font-bold shadow-xs hover:border-helio/50 hover:bg-slate-50 transition cursor-pointer"
+              title="Click to toggle currency between USD ($) and LKR (Rs.)"
+            >
+              <span className={`px-1.5 py-0.5 rounded ${currency === "LKR" ? "bg-helio text-white" : "text-ink/60"}`}>
+                LKR (Rs)
+              </span>
+              <span className="text-ink/30 px-1">/</span>
+              <span className={`px-1.5 py-0.5 rounded ${currency === "USD" ? "bg-helio text-white" : "text-ink/60"}`}>
+                USD ($)
+              </span>
+            </button>
+
             {/* Quick Browse Link */}
             <a
               href="#templates"
-              className="hidden md:inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-ink/75 hover:bg-mist hover:text-ink transition"
+              className="hidden lg:inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-ink/75 hover:bg-mist hover:text-ink transition"
             >
-              Browse Catalog
+              Catalog
             </a>
 
-            {/* Add Template Button (Opens Popup Modal as requested) */}
-            <button
-              type="button"
-              onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-ink/85 active:scale-95 cursor-pointer"
-              id="header-add-template-btn"
-            >
-              <Plus className="size-4 text-helio" />
-              <span>Add Template</span>
-            </button>
+            {/* Add Template Button (Restricted to Admin and Creator as requested) */}
+            {mounted && isAdminOrCreator && (
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(true)}
+                suppressHydrationWarning
+                className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-ink/85 active:scale-95 cursor-pointer"
+                id="header-add-template-btn"
+              >
+                <Plus className="size-4 text-helio" />
+                <span>Add Template</span>
+              </button>
+            )}
 
             {/* User Auth Status / Login Link */}
-            {authUser ? (
+            {mounted && authUser ? (
               <div className="flex items-center gap-2 pl-1 border-l border-ink/15">
-                <div className="flex items-center gap-2 rounded-xl bg-mist px-3 py-1.5 border border-ink/10">
+                {/* User Profile Trigger Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsProfileModalOpen(true)}
+                  suppressHydrationWarning
+                  className="flex items-center gap-2 rounded-xl bg-mist px-3 py-1.5 border border-ink/10 hover:border-helio/40 hover:bg-white transition cursor-pointer text-left"
+                  title="View user profile & membership"
+                >
                   <div className="size-6 rounded-full bg-helio text-white flex items-center justify-center text-xs font-bold">
-                    {authUser.name.charAt(0).toUpperCase()}
+                    {authUser.full_name?.charAt(0).toUpperCase() || authUser.email.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xs font-semibold max-w-[100px] truncate hidden sm:inline">
-                    {authUser.name}
-                  </span>
-                </div>
+                  <div className="hidden sm:flex flex-col">
+                    <span className="text-xs font-bold max-w-[90px] truncate leading-tight">
+                      {authUser.full_name || authUser.email.split("@")[0]}
+                    </span>
+                    <span className="text-[10px] font-semibold text-helio leading-tight">
+                      {authUser.role.toUpperCase()}
+                    </span>
+                  </div>
+                </button>
+
+                {/* Sign Out Button */}
                 <button
                   type="button"
                   onClick={handleLogout}
+                  suppressHydrationWarning
                   title="Sign out"
                   className="rounded-lg p-2 text-ink/50 hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer"
                 >
@@ -222,7 +377,10 @@ export default function Page() {
       </header>
 
       {/* ---------- Redesigned Hero Section UI/UX ---------- */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-white via-sky-50/40 to-slate-50 border-b border-ink/10 pt-10 pb-16 sm:pt-16 sm:pb-24">
+      <section
+        className="relative overflow-hidden bg-gradient-to-b from-white via-sky-50/40 to-slate-50 border-b border-ink/10 pt-10 pb-16 sm:pt-16 sm:pb-24"
+        suppressHydrationWarning
+      >
         {/* Soft Ambient Glows */}
         <div className="pointer-events-none absolute -top-24 right-1/4 size-96 rounded-full bg-helio/10 blur-3xl" />
         <div className="pointer-events-none absolute top-1/2 left-10 size-80 rounded-full bg-sky-200/40 blur-3xl" />
@@ -249,7 +407,7 @@ export default function Page() {
               <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink/75 sm:text-xl">
                 Explore interactive live demos across{" "}
                 <strong className="font-semibold text-ink">Hotel, Hospital, Ecommerce, Supermarket</strong>{" "}
-                and more. Pick your favorite, customize the copy, and go live with your own domain in 48 hours.
+                and more. Sign in to view live demos, upgrade to CH-User for LKR 600 ($1.82), and launch in 48 hours.
               </p>
 
               {/* Hero Action Cluster */}
@@ -262,14 +420,37 @@ export default function Page() {
                   <ArrowRight className="size-4" />
                 </a>
 
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-ink/20 bg-white px-5 py-3.5 text-base font-bold text-ink shadow-sm transition hover:bg-slate-50 hover:border-ink/40 active:scale-95 cursor-pointer"
-                >
-                  <Plus className="size-4 text-helio" />
-                  <span>Submit Template</span>
-                </button>
+                {mounted && isAdminOrCreator ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(true)}
+                    suppressHydrationWarning
+                    className="inline-flex items-center gap-2 rounded-xl border border-ink/20 bg-white px-5 py-3.5 text-base font-bold text-ink shadow-sm transition hover:bg-slate-50 hover:border-ink/40 active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="size-4 text-helio" />
+                    <span>Submit Template (Admin)</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!authUser) {
+                        window.location.href = "/login";
+                      } else {
+                        setIsProfileModalOpen(true);
+                      }
+                    }}
+                    suppressHydrationWarning
+                    className="inline-flex items-center gap-2 rounded-xl border border-helio/30 bg-white px-5 py-3.5 text-base font-bold text-helio shadow-sm transition hover:bg-sky-50 active:scale-95 cursor-pointer"
+                  >
+                    <Crown className="size-4 text-amber-500" />
+                    <span>
+                      {authUser?.role === "ch_user"
+                        ? "CH-User Active"
+                        : "Upgrade to CH-User (LKR 600)"}
+                    </span>
+                  </button>
+                )}
               </div>
 
               {/* Live Search Quick Box inside Hero */}
@@ -280,12 +461,14 @@ export default function Page() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    suppressHydrationWarning
                     placeholder="Search Hotel, Hospital, Ecommerce, Supermarket, price..."
                     className="w-full bg-transparent px-3 py-1.5 text-sm font-medium text-ink focus:outline-none"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery("")}
+                      suppressHydrationWarning
                       className="rounded-full p-1 text-ink/40 hover:bg-mist hover:text-ink cursor-pointer"
                     >
                       <X className="size-4" />
@@ -337,12 +520,14 @@ export default function Page() {
                   ))}
                 </div>
 
-                {/* Floating Preview Card with Top-Right Price Tag */}
+                {/* Floating Preview Card with Top-Right Price Tag formatted in active currency */}
                 <div className="relative rounded-3xl border border-ink/15 bg-white/95 p-4 shadow-2xl backdrop-blur-md">
-                  {/* Floating Price Tag at Top-Right (Prominent showcase) */}
+                  {/* Floating Price Tag at Top-Right */}
                   <div className="absolute top-7 right-7 z-20 flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1 text-sm font-bold text-helio shadow-xl border border-helio/30">
                     <span className="text-xs font-semibold text-ink/50">Starts at</span>
-                    <span className="text-base font-extrabold text-helio">$89</span>
+                    <span className="text-base font-extrabold text-helio">
+                      {formatPrice(89, 29370)}
+                    </span>
                   </div>
 
                   <div className="overflow-hidden rounded-2xl border border-ink/10 bg-slate-50">
@@ -387,7 +572,7 @@ export default function Page() {
                   <div className="mt-3 flex items-center justify-between px-2 text-xs text-ink/65">
                     <span className="flex items-center gap-1 font-medium">
                       <Sparkles className="size-3.5 text-amber-500" />
-                      Client Code Generated Automatically
+                      Email OTP Verification Active
                     </span>
                     <span className="font-bold text-helio">100% Turnkey</span>
                   </div>
@@ -399,7 +584,7 @@ export default function Page() {
       </section>
 
       {/* ---------- Main Template Catalog Section ---------- */}
-      <main id="templates" className="mx-auto max-w-7xl px-4 sm:px-6 py-14 sm:py-20">
+      <main id="templates" className="mx-auto max-w-7xl px-4 sm:px-6 py-14 sm:py-20" suppressHydrationWarning>
         {/* Section Heading */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
           <div>
@@ -411,22 +596,25 @@ export default function Page() {
               Curated Business Templates
             </h2>
             <p className="mt-1 text-sm text-ink/70 max-w-xl">
-              Every card shows the starting price in the top-right corner. Click "Live Demo" to explore or "Apply" to get your code.
+              Starting prices displayed in <strong className="text-helio">{currency}</strong> on the top-right of each card. Click "Live Demo" to launch interactive iframe, or "Apply" as a CH-User.
             </p>
           </div>
 
-          {/* Quick Add Button & Active Counter */}
+          {/* Quick Add Button (Restricted to Admin & Creator) & Active Counter */}
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-ink/60 bg-white px-3 py-1.5 rounded-xl border border-ink/10">
               Showing <strong className="text-ink">{filteredTemplates.length}</strong> templates
             </span>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-helio px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-helio-dark transition cursor-pointer"
-            >
-              <Plus className="size-4" />
-              <span>Add New</span>
-            </button>
+            {mounted && isAdminOrCreator && (
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                suppressHydrationWarning
+                className="inline-flex items-center gap-1.5 rounded-xl bg-helio px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-helio-dark transition cursor-pointer"
+              >
+                <Plus className="size-4" />
+                <span>Add Template</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -452,6 +640,7 @@ export default function Page() {
                   role="tab"
                   aria-selected={isSelected}
                   onClick={() => setActive(c)}
+                  suppressHydrationWarning
                   className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer shadow-xs ${
                     isSelected
                       ? "bg-ink text-white shadow-md scale-105"
@@ -483,6 +672,7 @@ export default function Page() {
               </div>
               <button
                 onClick={() => setSearchQuery("")}
+                suppressHydrationWarning
                 className="font-bold text-helio hover:underline cursor-pointer"
               >
                 Clear Search
@@ -493,9 +683,15 @@ export default function Page() {
 
         {/* Template Grid or Empty State */}
         {filteredTemplates.length > 0 ? (
-          <div key={`${active}-${searchQuery}`} className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div key={`${active}-${searchQuery}-${currency}`} className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredTemplates.map((t, i) => (
-              <TemplateCard key={t.slug} t={t} index={i} />
+              <TemplateCard
+                key={t.slug}
+                t={t}
+                index={i}
+                onApply={handleApplyClick}
+                onOpenLiveDemo={handleOpenLiveDemo}
+              />
             ))}
           </div>
         ) : (
@@ -513,15 +709,10 @@ export default function Page() {
                   setSearchQuery("");
                   setActive("All");
                 }}
+                suppressHydrationWarning
                 className="rounded-xl border border-ink/20 px-4 py-2 text-sm font-semibold text-ink hover:bg-mist transition cursor-pointer"
               >
                 Reset Filters
-              </button>
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="rounded-xl bg-helio px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-helio-dark transition cursor-pointer"
-              >
-                Add Template to {active}
               </button>
             </div>
           </div>
@@ -529,7 +720,7 @@ export default function Page() {
       </main>
 
       {/* ---------- 3-Step Process Guide Section ---------- */}
-      <section className="border-t border-ink/10 bg-mist/60 py-16">
+      <section className="border-t border-ink/10 bg-mist/60 py-16" suppressHydrationWarning>
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <span className="text-xs font-bold uppercase tracking-wider text-helio">
@@ -547,9 +738,9 @@ export default function Page() {
               <div className="flex size-10 items-center justify-center rounded-xl bg-helio/10 text-helio font-bold text-lg">
                 1
               </div>
-              <h3 className="mt-4 text-xl font-bold text-ink">Pick Your Template</h3>
+              <h3 className="mt-4 text-xl font-bold text-ink">Pick & Live Demo</h3>
               <p className="mt-2 text-sm text-ink/70 leading-relaxed">
-                Click "Live Demo" on any card to explore the design, pages, and mobile responsiveness. Notice the starting price clearly displayed on the top right.
+                Sign in and click "Live Demo" to launch the interactive responsive iframe across Desktop, Tablet, and Mobile.
               </p>
             </div>
 
@@ -558,9 +749,9 @@ export default function Page() {
               <div className="flex size-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700 font-bold text-lg">
                 2
               </div>
-              <h3 className="mt-4 text-xl font-bold text-ink">Apply in 60 Seconds</h3>
+              <h3 className="mt-4 text-xl font-bold text-ink">Upgrade to CH-User (LKR 600)</h3>
               <p className="mt-2 text-sm text-ink/70 leading-relaxed">
-                Hit "Apply" to open the request form. Input your business name, domain preference, and receive an instant unique client tracking code.
+                Upgrade to verified CH-User status for a one-time fee of LKR 600 ($1.82). Receive an email OTP code to verify your application.
               </p>
             </div>
 
@@ -569,9 +760,9 @@ export default function Page() {
               <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-bold text-lg">
                 3
               </div>
-              <h3 className="mt-4 text-xl font-bold text-ink">Go Live in 48 Hours</h3>
+              <h3 className="mt-4 text-xl font-bold text-ink">Deploy in 48 Hours</h3>
               <p className="mt-2 text-sm text-ink/70 leading-relaxed">
-                Our engineering team injects your brand content, activates SSL, configures your domain, and deploys your website to global edge hosting.
+                Quote your unique Client Code. Our team injects your brand content, connects your domain, and puts your website live online.
               </p>
             </div>
           </div>
@@ -579,7 +770,7 @@ export default function Page() {
       </section>
 
       {/* ---------- Modern Footer ---------- */}
-      <footer className="border-t border-ink/10 bg-ink text-white/80">
+      <footer className="border-t border-ink/10 bg-ink text-white/80" suppressHydrationWarning>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-white/10">
             <div className="flex items-center gap-3">
@@ -599,30 +790,78 @@ export default function Page() {
               <a href="#templates" className="hover:text-white transition">
                 Templates
               </a>
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="hover:text-white transition cursor-pointer"
-              >
-                Add Template
-              </button>
-              <Link href="/login" className="hover:text-white transition">
-                Login
-              </Link>
+              {mounted && isAdminOrCreator && (
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  suppressHydrationWarning
+                  className="hover:text-white transition cursor-pointer"
+                >
+                  Add Template
+                </button>
+              )}
+              {mounted && authUser ? (
+                <button
+                  onClick={() => setIsProfileModalOpen(true)}
+                  suppressHydrationWarning
+                  className="hover:text-white transition cursor-pointer"
+                >
+                  My Profile ({authUser.role})
+                </button>
+              ) : (
+                <Link href="/login" className="hover:text-white transition">
+                  Login
+                </Link>
+              )}
             </div>
           </div>
 
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-white/50 gap-4">
-            <p>© {new Date().getFullYear()} CodeHelio. All rights reserved.</p>
-            <p>Designed for fast deployment & high-conversion business websites.</p>
+            <p suppressHydrationWarning>© 2026 CodeHelio. All rights reserved.</p>
+            <p>Role-Based Access: Admin, Creator, CH-User, Standard User.</p>
           </div>
         </div>
       </footer>
 
-      {/* ---------- Add Template Popup Modal (As requested by user) ---------- */}
-      <AddTemplateModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAddTemplate={handleAddTemplate}
+      {/* ---------- Modals ---------- */}
+
+      {/* 1. Add Template Modal (Admin / Creator Only) */}
+      {isAdminOrCreator && (
+        <AddTemplateModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onAddTemplate={handleAddTemplate}
+        />
+      )}
+
+      {/* 2. Interactive Live Demo Iframe Modal */}
+      <LiveDemoModal
+        isOpen={isLiveDemoOpen}
+        template={selectedDemoTemplate}
+        onClose={() => {
+          setIsLiveDemoOpen(false);
+          setSelectedDemoTemplate(null);
+        }}
+        onApply={(t) => handleApplyClick(t)}
+      />
+
+      {/* 3. User Profile & Membership Upgrade Modal (LKR 600 / $1.82) */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        user={authUser}
+        onClose={() => setIsProfileModalOpen(false)}
+        onUserUpdated={(updated) => setAuthUser(updated)}
+      />
+
+      {/* 4. Apply Modal with Email OTP Verification */}
+      <ApplyModal
+        isOpen={isApplyModalOpen}
+        template={selectedApplyTemplate}
+        user={authUser}
+        onClose={() => {
+          setIsApplyModalOpen(false);
+          setSelectedApplyTemplate(null);
+        }}
+        onSuccess={handleApplicationSuccess}
       />
     </div>
   );
