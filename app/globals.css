@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #3f3f3f;
+  --color-helio: #027cc7;
+  --color-helio-dark: #02659f;
+  --color-mist: #f2f6f9;
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+body { color: var(--color-ink); background: #fff; }
+:focus-visible { outline: 3px solid var(--color-helio); outline-offset: 3px; }
+
+/* ---------- Hero rings: one load sequence, same shapes as the logo ---------- */
+.ring {
+  --size: clamp(5.5rem, 17vw, 13rem);
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 9999px;
+  border: calc(var(--size) * 0.13) solid var(--color-ink);
+  margin-left: calc(var(--size) * -0.12);
+  opacity: 0;
+  animation: ring-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--delay);
+}
+.ring:first-child { margin-left: 0; }
+.ring-blue { border-color: var(--color-helio); z-index: 2; animation-name: ring-drop; }
+.ring-e::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: calc(var(--size) * -0.13);
+  width: 52%;
+  height: calc(var(--size) * 0.13);
+  transform: translateY(-50%);
+  background: var(--color-ink);
+}
+@keyframes ring-in {
+  from { opacity: 0; transform: translateX(var(--from)) scale(0.85); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ring-drop {
+  from { opacity: 0; transform: translateY(-120%); }
+  60% { opacity: 1; transform: translateY(6%); }
+  to { opacity: 1; transform: none; }
+}
+.hero-copy { animation: copy-in 0.8s ease-out 1.1s both; }
+@keyframes copy-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Template preview: the page scrolls itself on hover ---------- */
+.mockup-scroll { transition: transform 3.2s cubic-bezier(0.45, 0, 0.2, 1); }
+.group:hover .mockup-scroll,
+.group:focus-within .mockup-scroll { transform: translateY(calc(-100% + 14rem)); }
+
+.card-in { animation: card-in 0.45s ease-out both; }
+@keyframes card-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ring, .hero-copy, .card-in { animation: none; opacity: 1; }
+  .mockup-scroll { transition: none; }
+  html { scroll-behavior: auto; }
+}
+
+/* ---------- SweetAlert2 theme ---------- */
+.ch-popup { border-radius: 1.25rem !important; font-family: var(--font-sans) !important; padding: 1.75rem !important; }
+.ch-title { color: var(--color-ink) !important; font-size: 1.5rem !important; font-weight: 600 !important; }
+.ch-html { margin: 0.75rem 0 0 !important; text-align: left !important; }
+.ch-code {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  border: 1.5px dashed var(--color-helio); background: #eef7fd; border-radius: 0.75rem;
+  padding: 0.6rem 0.9rem; margin-bottom: 1rem; font-size: 0.8rem; color: var(--color-ink);
+}
+.ch-code strong { font-size: 1rem; letter-spacing: 0.04em; color: var(--color-helio-dark); font-variant-numeric: tabular-nums; }
+.ch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.ch-grid .full { grid-column: 1 / -1; }
+@media (max-width: 520px) { .ch-grid { grid-template-columns: 1fr; } }
+.ch-label { display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.25rem; }
+.ch-input {
+  width: 100%; border: 1.5px solid #d6dde2; border-radius: 0.6rem; padding: 0.6rem 0.75rem;
+  font: inherit; font-size: 0.9rem; color: var(--color-ink); background: #fff;
+}
+.ch-input:focus { outline: none; border-color: var(--color-helio); box-shadow: 0 0 0 3px rgb(2 124 199 / 0.18); }
+textarea.ch-input { resize: vertical; min-height: 4.5rem; }
+.ch-confirm, .ch-cancel {
+  border-radius: 0.7rem !important; padding: 0.7rem 1.4rem !important; font-weight: 600 !important;
+  font-size: 0.95rem !important; margin: 0 0.35rem !important; cursor: pointer; border: 0;
+}
+.ch-confirm { background: var(--color-helio) !important; color: #fff !important; }
+.ch-confirm:hover { background: var(--color-helio-dark) !important; }
+.ch-cancel { background: #e8edf0 !important; color: var(--color-ink) !important; }
+.ch-validation { border-radius: 0.6rem !important; font-size: 0.85rem !important; }
