@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase";
+
 export type Layout = "split" | "center" | "grid";
 
 export type Template = {
@@ -24,6 +26,7 @@ export const TEMPLATE_CATEGORIES = [
   "Restaurant",
   "Salon & spa",
   "Real estate",
+  "Garment",
   "Portfolio",
 ] as const;
 
@@ -138,7 +141,7 @@ export const initialTemplates: Template[] = [
   },
 ];
 
-export const templates = initialTemplates;
+export const STATIC_TEMPLATES = initialTemplates;
 
 export const categories = [
   "All",
@@ -149,5 +152,50 @@ export const categories = [
   "Restaurant",
   "Salon & spa",
   "Real estate",
+  "Garment",
   "Portfolio",
 ];
+
+/**
+ * Supabase database එකෙන් templates ලබා ගැනීම. 
+ * Database එකේ ඩේටා තිබේ නම් ඒවා ලබා දෙයි, නැත්නම් STATIC_TEMPLATES පෙන්වයි.
+ */
+export async function getAllTemplates(): Promise<Template[]> {
+  try {
+    const { data, error } = await supabase
+      .from("templates")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    console.log("Supabase fetch result:", { data, error });
+
+    if (error || !data || data.length === 0) {
+      return STATIC_TEMPLATES;
+    }
+
+    const dbTemplates: Template[] = data.map((item: any) => ({
+      slug: item.slug,
+      name: item.name,
+      category: item.category,
+      price: item.price,
+      priceUsd: item.price_usd ?? 89,
+      priceLkr: item.price_lkr ?? 29370,
+      demoUrl: item.demo_url,
+      blurb: item.blurb,
+      pages: item.pages,
+      accent: item.accent,
+      layout: item.layout || "split",
+      imageUrl: item.image_url,
+      badge: item.badge,
+    }));
+
+    return dbTemplates;
+  } catch (err) {
+    console.warn("Failed to fetch from Supabase, falling back to static templates:", err);
+    return STATIC_TEMPLATES;
+  }
+}
+
+// ⚠️ වැදගත්: UI components වල direct templates import කර තිබේ නම්,
+// ඒවා Supabase එකෙන් ඩේටා ගන්නා විදිහට පහත පරිදි async function එකක් ලෙස වෙනස් කර ඇත.
+export const templates = initialTemplates;

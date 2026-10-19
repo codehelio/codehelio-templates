@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import {
+  getAllTemplates,
   initialTemplates,
   categories,
   type Template,
@@ -14,7 +15,7 @@ import LiveDemoModal from "@/components/LiveDemoModal";
 import UserProfileModal from "@/components/UserProfileModal";
 import ApplyModal from "@/components/ApplyModal";
 import { useCurrency } from "@/lib/currency";
-import { UserProfile, getStoredProfile, setStoredProfile } from "@/lib/supabase";
+import { supabase, UserProfile, getStoredProfile, setStoredProfile } from "@/lib/supabase";
 import {
   Plus,
   Search,
@@ -35,6 +36,7 @@ import {
   Scissors,
   Home,
   Briefcase,
+  Factory,
   Layers,
   Crown,
   Lock,
@@ -65,30 +67,95 @@ export default function Page() {
   const [authUser, setAuthUser] = useState<UserProfile | null>(null);
   const [mounted, setMounted] = useState(false);
 
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(true);
+
   // Currency Hook
   const { currency, toggleCurrency, formatPrice } = useCurrency();
 
   // Load custom templates and user session from localStorage after mount
-  useEffect(() => {
+useEffect(() => {
     setMounted(true);
-    try {
-      const savedTemplates = localStorage.getItem("codehelio_custom_templates");
-      if (savedTemplates) {
-        const parsed = JSON.parse(savedTemplates);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setTemplateList([...parsed, ...initialTemplates]);
+
+    async function initializeDefaultUsersAndTemplates() {
+      try {
+        // 1. .env එකේ තියෙන Admin සහ Creator විස්තර ලබා ගැනීම
+        const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+        const adminName = process.env.NEXT_PUBLIC_ADMIN_NAME;
+        
+        const creatorEmail = process.env.NEXT_PUBLIC_CREATOR_EMAIL;
+        const creatorName = process.env.NEXT_PUBLIC_CREATOR_NAME;
+
+        // 2. LocalStorage හි Default Users සේව් කිරීම (RLS Errors වළක්වා ගැනීමට)
+        const existingUsersJson = localStorage.getItem("codehelio_all_users");
+        
+        if (!existingUsersJson) {
+          const defaultUsers = [];
+
+          if (adminEmail) {
+            defaultUsers.push({
+              full_name: adminName || "CodeHelio Administrator",
+              email: adminEmail,
+              role: "admin",
+            });
+          }
+
+          if (creatorEmail) {
+            defaultUsers.push({
+              full_name: creatorName || "CodeHelio Studio Creator",
+              email: creatorEmail,
+              role: "creator",
+            });
+          }
+
+          if (defaultUsers.length > 0) {
+            localStorage.setItem("codehelio_all_users", JSON.stringify(defaultUsers));
+            
+            // Active user profile එකක් සෙට් කර නොමැති නම් Admin ලෙස සෙට් කිරීම
+            const activeProfile = localStorage.getItem("codehelio_user_profile");
+            if (!activeProfile) {
+              localStorage.setItem("codehelio_user_profile", JSON.stringify(defaultUsers[0]));
+              setAuthUser(defaultUsers[0]);
+            }
+          }
         }
-      }
 
-      const stored = getStoredProfile();
-      if (stored) {
-        setAuthUser(stored);
+        // 3. ඩේටාබේස් එකෙන් සහ LocalStorage එකෙන් Templates ලෝඩ් කරගැනීම
+        const savedTemplates = localStorage.getItem("codehelio_custom_templates");
+        let localTemplates: Template[] = [];
+        if (savedTemplates) {
+          const parsed = JSON.parse(savedTemplates);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            localTemplates = parsed;
+          }
+        }
+
+        const dbData = await getAllTemplates();
+        const combined = [...localTemplates, ...(dbData || [])];
+        
+        const uniqueTemplates = combined.filter(
+          (item, index, self) => index === self.findIndex((t) => t.slug === item.slug)
+        );
+
+        if (uniqueTemplates.length > 0) {
+          setTemplateList(uniqueTemplates);
+        }
+
+        // 4. Auth profile ලබා ගැනීම
+        const stored = getStoredProfile();
+        if (stored) {
+          setAuthUser(stored);
+        }
+
+      } catch (err) {
+        console.error("Error during initialization:", err);
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      // ignore
     }
-  }, []);
 
+    initializeDefaultUsersAndTemplates();
+  }, []);
   // Determine user permissions
   const isAdminOrCreator = authUser?.role === "admin" || authUser?.role === "creator";
   const isChUser = authUser?.role === "ch_user";
@@ -143,6 +210,8 @@ export default function Page() {
       return matchesCategory && matchesSearch;
     });
   }, [templateList, active, searchQuery]);
+
+
 
   // Handler when clicking "Live Demo"
   const handleOpenLiveDemo = (t: Template) => {
@@ -253,10 +322,14 @@ export default function Page() {
         return <Home className="size-3.5" />;
       case "portfolio":
         return <Briefcase className="size-3.5" />;
+      case "garment":
+      case "garment & factory":
+        return <Factory className="size-3.5" />; // (lucide-react වලින් Factory import කරගත හැක)
       default:
         return <Layers className="size-3.5" />;
     }
   };
+  if (!mounted) return null;
 
   return (
     <div
@@ -407,7 +480,7 @@ export default function Page() {
               <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink/75 sm:text-xl">
                 Explore interactive live demos across{" "}
                 <strong className="font-semibold text-ink">Hotel, Hospital, Ecommerce, Supermarket</strong>{" "}
-                and more. Sign in to view live demos, upgrade to CH-User for LKR 600 ($1.82), and launch in 48 hours.
+                and more. Sign in to view live demos, upgrade to CH-User for LKR 600 ($1.82).
               </p>
 
               {/* Hero Action Cluster */}
@@ -585,6 +658,8 @@ export default function Page() {
 
       {/* ---------- Main Template Catalog Section ---------- */}
       <main id="templates" className="mx-auto max-w-7xl px-4 sm:px-6 py-14 sm:py-20" suppressHydrationWarning>
+
+
         {/* Section Heading */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
           <div>
@@ -641,18 +716,16 @@ export default function Page() {
                   aria-selected={isSelected}
                   onClick={() => setActive(c)}
                   suppressHydrationWarning
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer shadow-xs ${
-                    isSelected
-                      ? "bg-ink text-white shadow-md scale-105"
-                      : "bg-white text-ink/80 border border-ink/15 hover:bg-helio/10 hover:text-helio hover:border-helio/30"
-                  }`}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer shadow-xs ${isSelected
+                    ? "bg-ink text-white shadow-md scale-105"
+                    : "bg-white text-ink/80 border border-ink/15 hover:bg-helio/10 hover:text-helio hover:border-helio/30"
+                    }`}
                 >
                   {getCategoryIcon(c)}
                   <span>{c}</span>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                      isSelected ? "bg-white/20 text-white" : "bg-mist text-ink/60"
-                    }`}
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${isSelected ? "bg-white/20 text-white" : "bg-mist text-ink/60"
+                      }`}
                   >
                     {count}
                   </span>
@@ -686,7 +759,7 @@ export default function Page() {
           <div key={`${active}-${searchQuery}-${currency}`} className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredTemplates.map((t, i) => (
               <TemplateCard
-                key={t.slug}
+                key={`${t.slug}-${i}`} // slug එක සහ index එක එකතු කර අද්විතීය key එකක් සෑදීම
                 t={t}
                 index={i}
                 onApply={handleApplyClick}

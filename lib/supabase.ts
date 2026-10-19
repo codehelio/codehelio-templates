@@ -14,13 +14,12 @@ export interface UserProfile {
   paid_currency?: string;
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://xyzcompany.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_anon_key";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://aycoyqmifbuycrmlqkup.supabase.co";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5Y295cW1pZmJ1eWNybWxxa3VwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNDMyMjgsImV4cCI6MjEwNzYxOTIyOH0.bZ5uhr00BbOTeMbFBPung_MRmt9JjZRLInSAwxUEEkc";
 
 export const isLiveSupabaseConfigured =
   Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && 
-  process.env.NEXT_PUBLIC_SUPABASE_URL.startsWith("https://") &&
-  !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("xyzcompany"));
+  process.env.NEXT_PUBLIC_SUPABASE_URL.startsWith("https://"));
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

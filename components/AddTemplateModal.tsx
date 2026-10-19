@@ -15,6 +15,7 @@ import {
   FileText,
 } from "lucide-react";
 import type { Template } from "@/lib/templates";
+import { supabase } from "@/lib/supabase";
 
 interface AddTemplateModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ const CATEGORY_OPTIONS = [
   { value: "Salon & spa", label: "Salon & Spa", color: "#be5b86" },
   { value: "Real estate", label: "Real Estate & Property", color: "#1d4ed8" },
   { value: "Portfolio", label: "Portfolio & Agency", color: "#0ea5e9" },
+  { value: "Garment", label: "Garment & factory", color: "#d97706" },
 ];
 
 export default function AddTemplateModal({
@@ -48,6 +50,7 @@ export default function AddTemplateModal({
   const [imageFileName, setImageFileName] = useState<string>("");
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -88,7 +91,7 @@ export default function AddTemplateModal({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       setError("Please enter the Template Name.");
@@ -106,6 +109,9 @@ export default function AddTemplateModal({
       setError("Please provide a brief description.");
       return;
     }
+
+    setLoading(true);
+    setError(null);
 
     // Format price if user omitted currency symbol
     let formattedPrice = price.trim();
@@ -143,8 +149,46 @@ export default function AddTemplateModal({
       badge: "New",
     };
 
-    onAddTemplate(newTemplate);
-    onClose();
+    try {
+      const { error: dbError } = await supabase.from("templates").insert([
+        {
+          slug: newTemplate.slug,
+          name: newTemplate.name,
+          category: newTemplate.category,
+          price: newTemplate.price,
+          price_usd: newTemplate.priceUsd,
+          price_lkr: newTemplate.priceLkr,
+          demo_url: newTemplate.demoUrl,
+          blurb: newTemplate.blurb,
+          pages: newTemplate.pages,
+          accent: newTemplate.accent,
+          layout: newTemplate.layout,
+          image_url: newTemplate.imageUrl,
+          badge: newTemplate.badge,
+        },
+      ]);
+
+      if (dbError) {
+        throw dbError;
+      }
+
+      onAddTemplate(newTemplate);
+      onClose();
+    } catch (err: any) {
+      // නියම Supabase error විස්තරය console එකට ලබා ගැනීම
+      console.error("Supabase Error Details:", {
+        message: err?.message,
+        details: err?.details,
+        hint: err?.hint,
+        code: err?.code,
+        raw: err
+      });
+
+      const errorMsg = err?.message || err?.details || "Failed to save template to database. Please check console.";
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -181,7 +225,7 @@ export default function AddTemplateModal({
         {error && (
           <div className="mt-4 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-700">
             <AlertCircle className="size-4 shrink-0" />
-            <span>{error}</span>
+            <span className="break-all">{error}</span>
           </div>
         )}
 
@@ -278,7 +322,7 @@ export default function AddTemplateModal({
               <textarea
                 required
                 rows={3}
-                placeholder="Briefly describe what is special about this template (e.g. Table reservation, room booking, responsive design, fast performance)..."
+                placeholder="Briefly describe what is special about this template..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full rounded-xl border border-ink/20 bg-slate-50 px-3.5 py-2.5 text-sm text-ink focus:border-helio focus:bg-white focus:outline-none focus:ring-3 focus:ring-helio/15"
@@ -388,16 +432,18 @@ export default function AddTemplateModal({
             <button
               type="button"
               onClick={onClose}
+              disabled={loading}
               className="rounded-xl border border-ink/20 px-5 py-2.5 text-sm font-semibold text-ink/80 hover:bg-mist transition cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-helio px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-helio-dark active:scale-[0.98] transition cursor-pointer flex items-center gap-1.5"
+              disabled={loading}
+              className="rounded-xl bg-helio px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-helio-dark active:scale-[0.98] transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
             >
               <Sparkles className="size-4" />
-              <span>Publish Template</span>
+              <span>{loading ? "Publishing..." : "Publish Template"}</span>
             </button>
           </div>
         </form>
