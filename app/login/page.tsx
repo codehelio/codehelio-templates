@@ -10,12 +10,11 @@ import {
   Eye,
   EyeOff,
   ArrowLeft,
-  Sparkles,
   ShieldCheck,
   Zap,
 } from "lucide-react";
 import Swal from "sweetalert2";
-import { authenticateUser, registerUser, UserRole } from "@/lib/supabase";
+import { authenticateUser, registerUser } from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -77,53 +76,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoFill = (role: UserRole) => {
-    if (role === "admin") {
-      setEmail("admin@codehelio.com");
-      setPassword("Admin@CodeHelio2026");
-      setFullName("CodeHelio Administrator");
-    } else if (role === "creator") {
-      setEmail("creator@codehelio.com");
-      setPassword("Creator@CodeHelio2026");
-      setFullName("CodeHelio Studio Creator");
-    } else if (role === "ch_user") {
-      setEmail("chuser@codehelio.com");
-      setPassword("ChUser@2026");
-      setFullName("Verified CH-User");
-      // Seed pre-upgraded profile in localStorage
-      try {
-        const customProfiles = JSON.parse(localStorage.getItem("codehelio_registered_users") || "{}");
-        customProfiles["chuser@codehelio.com"] = {
-          id: "user-chuser",
-          email: "chuser@codehelio.com",
-          full_name: "Verified CH-User",
-          role: "ch_user",
-          is_paid: true,
-          paid_amount: 600,
-          paid_currency: "LKR",
-        };
-        localStorage.setItem("codehelio_registered_users", JSON.stringify(customProfiles));
-      } catch {}
-    } else {
-      // Normal user
-      setEmail("user@codehelio.com");
-      setPassword("User@2026");
-      setFullName("Kasun Perera");
-      try {
-        const customProfiles = JSON.parse(localStorage.getItem("codehelio_registered_users") || "{}");
-        customProfiles["user@codehelio.com"] = {
-          id: "user-normal",
-          email: "user@codehelio.com",
-          full_name: "Kasun Perera",
-          role: "user",
-          is_paid: false,
-        };
-        localStorage.setItem("codehelio_registered_users", JSON.stringify(customProfiles));
-      } catch {}
-    }
-    setError(null);
-  };
-
   const handleForgotPassword = () => {
     Swal.fire({
       title: "Reset Password",
@@ -159,25 +111,15 @@ export default function LoginPage() {
       className="relative min-h-screen w-full flex items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8 overflow-hidden"
       suppressHydrationWarning
     >
-      {/* Decorative Background Lighting */}
+      {/* Background Glows */}
       <div className="pointer-events-none absolute -top-40 -left-40 size-96 rounded-full bg-helio/15 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 size-96 rounded-full bg-sky-400/15 blur-3xl" />
 
-      {/* Back to Home Button */}
-      <Link
-        href="/"
-        className="absolute top-6 left-6 inline-flex items-center gap-2 rounded-xl border border-ink/10 bg-white/80 px-4 py-2 text-sm font-semibold text-ink shadow-xs backdrop-blur-md transition hover:bg-white hover:shadow-sm"
-      >
-        <ArrowLeft className="size-4" />
-        <span>Back to Templates</span>
-      </Link>
-
-      <div className="w-full max-w-md">
-        {/* Card Container */}
-        <div className="overflow-hidden rounded-3xl border border-ink/10 bg-white p-8 shadow-xl">
-          {/* Logo & Headline */}
-          <div className="text-center">
-            <Link href="/" className="inline-block">
+       <div className="w-full max-w-md" suppressHydrationWarning>
+        <div className="overflow-hidden rounded-3xl border border-ink/10 bg-white p-8 shadow-xl" suppressHydrationWarning>
+          {/* Logo Header */}
+          <div className="text-center" suppressHydrationWarning>
+            <Link href="/" className="inline-block" suppressHydrationWarning>
               <Image
                 src="/CodeHelio_Logo.png"
                 alt="CodeHelio"
@@ -187,92 +129,48 @@ export default function LoginPage() {
                 priority
               />
             </Link>
-            <h1 className="mt-6 text-2xl font-bold tracking-tight text-ink">
+            <h1 className="mt-6 text-2xl font-bold tracking-tight text-ink" suppressHydrationWarning>
               {isSignUp ? "Create a CodeHelio Account" : "Sign In to CodeHelio"}
             </h1>
-            <p className="mt-2 text-sm text-ink/65">
+            <p className="mt-2 text-sm text-ink/65" suppressHydrationWarning>
               {isSignUp
-                ? "New accounts start as standard user (Upgrade to CH-User to apply)"
+                ? "Create your account to get started"
                 : "Manage your template requests, inquiries & orders"}
             </p>
           </div>
 
-          {/* Quick Demo Credentials for all 4 roles */}
-          <div className="mt-5 rounded-2xl bg-mist p-3 border border-ink/10">
-            <div className="text-xs text-ink/70">
-              <div className="font-semibold flex items-center gap-1 mb-2">
-                <Sparkles className="size-3 text-helio" /> One-Click Role Testing:
-              </div>
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 text-center">
-                <button
-                  type="button"
-                  onClick={() => handleDemoFill("admin")}
-                  className="rounded-md bg-white px-2 py-1 font-bold text-rose-600 border border-rose-200 hover:bg-rose-50 transition cursor-pointer text-[11px]"
-                  title="In-built Administrator (Can add/edit templates)"
-                >
-                  Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDemoFill("creator")}
-                  className="rounded-md bg-white px-2 py-1 font-bold text-purple-600 border border-purple-200 hover:bg-purple-50 transition cursor-pointer text-[11px]"
-                  title="Creator Role (Can add templates)"
-                >
-                  Creator
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDemoFill("ch_user")}
-                  className="rounded-md bg-white px-2 py-1 font-bold text-emerald-600 border border-emerald-200 hover:bg-emerald-50 transition cursor-pointer text-[11px]"
-                  title="Verified CH-User (Paid LKR 600 - Can Apply with OTP)"
-                >
-                  CH-User
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDemoFill("user")}
-                  className="rounded-md bg-white px-2 py-1 font-bold text-ink border border-ink/20 hover:bg-slate-100 transition cursor-pointer text-[11px]"
-                  title="Standard User (Can view demo, needs upgrade to apply)"
-                >
-                  Normal
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* Error Message */}
           {error && (
-            <div className="mt-4 rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-medium text-rose-700">
+            <div className="mt-4 rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-medium text-rose-700" suppressHydrationWarning>
               {error}
             </div>
           )}
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          {/* Auth Form */}
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4" suppressHydrationWarning>
             {isSignUp && (
-              <div>
+              <div suppressHydrationWarning>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-ink/80 mb-1">
                   Full Name
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required={isSignUp}
-                    placeholder="Kasun Perera"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full rounded-xl border border-ink/20 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-ink focus:border-helio focus:bg-white focus:outline-none focus:ring-3 focus:ring-helio/15"
-                  />
-                </div>
+                <input
+                  type="text"
+                  required={isSignUp}
+                  placeholder="Kasun Perera"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  suppressHydrationWarning
+                  className="w-full rounded-xl border border-ink/20 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-ink focus:border-helio focus:bg-white focus:outline-none focus:ring-3 focus:ring-helio/15"
+                />
               </div>
             )}
 
             {/* Email Field */}
-            <div>
+            <div suppressHydrationWarning>
               <label className="block text-xs font-semibold uppercase tracking-wider text-ink/80 mb-1">
                 Email Address
               </label>
-              <div className="relative">
+              <div className="relative" suppressHydrationWarning>
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-ink/40">
                   <Mail className="size-4" />
                 </div>
@@ -283,13 +181,14 @@ export default function LoginPage() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  suppressHydrationWarning
                   className="w-full rounded-xl border border-ink/20 bg-slate-50 pl-10 pr-3.5 py-2.5 text-sm font-medium text-ink focus:border-helio focus:bg-white focus:outline-none focus:ring-3 focus:ring-helio/15"
                 />
               </div>
             </div>
 
             {/* Password Field */}
-            <div>
+            <div suppressHydrationWarning>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-ink/80">
                   Password
@@ -298,13 +197,14 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={handleForgotPassword}
+                    suppressHydrationWarning
                     className="text-xs font-medium text-helio hover:underline cursor-pointer"
                   >
                     Forgot password?
                   </button>
                 )}
               </div>
-              <div className="relative">
+              <div className="relative" suppressHydrationWarning>
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-ink/40">
                   <Lock className="size-4" />
                 </div>
@@ -315,11 +215,13 @@ export default function LoginPage() {
                   autoComplete={isSignUp ? "new-password" : "current-password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  suppressHydrationWarning
                   className="w-full rounded-xl border border-ink/20 bg-slate-50 pl-10 pr-10 py-2.5 text-sm font-medium text-ink focus:border-helio focus:bg-white focus:outline-none focus:ring-3 focus:ring-helio/15"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  suppressHydrationWarning
                   className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-ink/40 hover:text-ink cursor-pointer"
                   tabIndex={-1}
                 >
@@ -328,23 +230,25 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Remember Me Checkbox */}
-            <div className="flex items-center justify-between pt-1">
+            {/* Remember Me */}
+            <div className="flex items-center justify-between pt-1" suppressHydrationWarning>
               <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-ink/75">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
+                  suppressHydrationWarning
                   className="size-4 rounded border-ink/30 text-helio focus:ring-helio cursor-pointer"
                 />
                 <span>Remember me on this browser</span>
               </label>
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
+              suppressHydrationWarning
               className="w-full rounded-xl bg-helio py-3 px-4 text-sm font-semibold text-white shadow-md hover:bg-helio-dark active:scale-[0.99] transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-70 mt-2"
             >
               {loading ? (
@@ -352,14 +256,14 @@ export default function LoginPage() {
               ) : (
                 <>
                   <Zap className="size-4" />
-                  <span>{isSignUp ? "Create Account (Normal User)" : "Sign In to Dashboard"}</span>
+                  <span>{isSignUp ? "Create Account" : "Sign In to Dashboard"}</span>
                 </>
               )}
             </button>
           </form>
 
-          {/* Toggle between Sign In & Sign Up */}
-          <div className="mt-6 border-t border-ink/10 pt-4 text-center">
+          {/* Toggle Mode */}
+          <div className="mt-6 border-t border-ink/10 pt-4 text-center" suppressHydrationWarning>
             <p className="text-xs text-ink/70">
               {isSignUp ? "Already have an account?" : "Don't have an account yet?"}{" "}
               <button
@@ -368,6 +272,7 @@ export default function LoginPage() {
                   setIsSignUp(!isSignUp);
                   setError(null);
                 }}
+                suppressHydrationWarning
                 className="font-semibold text-helio hover:underline cursor-pointer"
               >
                 {isSignUp ? "Sign In instead" : "Create an account"}
@@ -375,8 +280,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Security Assurance */}
-          <div className="mt-6 flex items-center justify-center gap-2 text-center text-[11px] text-ink/50">
+          <div className="mt-6 flex items-center justify-center gap-2 text-center text-[11px] text-ink/50" suppressHydrationWarning>
             <ShieldCheck className="size-3.5 text-emerald-600" />
             <span>256-bit encrypted Supabase authentication</span>
           </div>

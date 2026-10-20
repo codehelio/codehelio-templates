@@ -42,6 +42,7 @@ import {
   Lock,
 } from "lucide-react";
 import Swal from "sweetalert2";
+import { useRouter } from "next/navigation";
 
 const rings = [
   { cls: "", from: "-60%", delay: "0.1s" },
@@ -51,6 +52,7 @@ const rings = [
 ];
 
 export default function Page() {
+  const router = useRouter();
   const [templateList, setTemplateList] = useState<Template[]>(initialTemplates);
   const [active, setActive] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,74 +79,20 @@ export default function Page() {
 useEffect(() => {
     setMounted(true);
 
-    async function initializeDefaultUsersAndTemplates() {
+    async function initializeApp() {
       try {
-        // 1. .env එකේ තියෙන Admin සහ Creator විස්තර ලබා ගැනීම
-        const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-        const adminName = process.env.NEXT_PUBLIC_ADMIN_NAME;
-        
-        const creatorEmail = process.env.NEXT_PUBLIC_CREATOR_EMAIL;
-        const creatorName = process.env.NEXT_PUBLIC_CREATOR_NAME;
-
-        // 2. LocalStorage හි Default Users සේව් කිරීම (RLS Errors වළක්වා ගැනීමට)
-        const existingUsersJson = localStorage.getItem("codehelio_all_users");
-        
-        if (!existingUsersJson) {
-          const defaultUsers = [];
-
-          if (adminEmail) {
-            defaultUsers.push({
-              full_name: adminName || "CodeHelio Administrator",
-              email: adminEmail,
-              role: "admin",
-            });
-          }
-
-          if (creatorEmail) {
-            defaultUsers.push({
-              full_name: creatorName || "CodeHelio Studio Creator",
-              email: creatorEmail,
-              role: "creator",
-            });
-          }
-
-          if (defaultUsers.length > 0) {
-            localStorage.setItem("codehelio_all_users", JSON.stringify(defaultUsers));
-            
-            // Active user profile එකක් සෙට් කර නොමැති නම් Admin ලෙස සෙට් කිරීම
-            const activeProfile = localStorage.getItem("codehelio_user_profile");
-            if (!activeProfile) {
-              localStorage.setItem("codehelio_user_profile", JSON.stringify(defaultUsers[0]));
-              setAuthUser(defaultUsers[0]);
-            }
-          }
-        }
-
-        // 3. ඩේටාබේස් එකෙන් සහ LocalStorage එකෙන් Templates ලෝඩ් කරගැනීම
-        const savedTemplates = localStorage.getItem("codehelio_custom_templates");
-        let localTemplates: Template[] = [];
-        if (savedTemplates) {
-          const parsed = JSON.parse(savedTemplates);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            localTemplates = parsed;
-          }
-        }
-
-        const dbData = await getAllTemplates();
-        const combined = [...localTemplates, ...(dbData || [])];
-        
-        const uniqueTemplates = combined.filter(
-          (item, index, self) => index === self.findIndex((t) => t.slug === item.slug)
-        );
-
-        if (uniqueTemplates.length > 0) {
-          setTemplateList(uniqueTemplates);
-        }
-
-        // 4. Auth profile ලබා ගැනීම
-        const stored = getStoredProfile();
+        // 1. Supabase Auth හරහා වත්මන් Session සහ User Profile ලබා ගැනීම
+        const stored = await getStoredProfile();
         if (stored) {
           setAuthUser(stored);
+        } else {
+          setAuthUser(null);
+        }
+
+        // 2. ඩේටාබේස් එකෙන් (Supabase) පමණක් Templates ලෝඩ් කරගැනීම
+        const dbData = await getAllTemplates();
+        if (dbData && dbData.length > 0) {
+          setTemplateList(dbData);
         }
 
       } catch (err) {
@@ -154,21 +102,29 @@ useEffect(() => {
       }
     }
 
-    initializeDefaultUsersAndTemplates();
+    initializeApp();
   }, []);
+
   // Determine user permissions
   const isAdminOrCreator = authUser?.role === "admin" || authUser?.role === "creator";
   const isChUser = authUser?.role === "ch_user";
 
-  const handleLogout = () => {
-    setStoredProfile(null);
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn("Sign out error:", e);
+    }
+
     setAuthUser(null);
     Swal.fire({
       icon: "info",
-      title: "Signed Out",
+      title: "Logged Out",
       text: "You have been logged out successfully.",
       timer: 1200,
       showConfirmButton: false,
+    }).then(() => {
+      router.push("/login");
     });
   };
 
@@ -385,19 +341,30 @@ useEffect(() => {
             >
               Catalog
             </a>
-
-            {/* Add Template Button (Restricted to Admin and Creator as requested) */}
+            {/* Restricted Action Button for Admin and Creator */}
             {mounted && isAdminOrCreator && (
-              <button
-                type="button"
-                onClick={() => setIsAddModalOpen(true)}
-                suppressHydrationWarning
-                className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-ink/85 active:scale-95 cursor-pointer"
-                id="header-add-template-btn"
-              >
-                <Plus className="size-4 text-helio" />
-                <span>Add Template</span>
-              </button>
+              authUser?.role === "admin" ? (
+                <Link
+                  href="/admin"
+                  suppressHydrationWarning
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-ink/85 active:scale-95 cursor-pointer"
+                  id="header-admin-panel-btn"
+                >
+                  <ShieldCheck className="size-4 text-helio" />
+                  <span>Admin Panel</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(true)}
+                  suppressHydrationWarning
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-ink/85 active:scale-95 cursor-pointer"
+                  id="header-add-template-btn"
+                >
+                  <Plus className="size-4 text-helio" />
+                  <span>Add Template</span>
+                </button>
+              )
             )}
 
             {/* User Auth Status / Login Link */}
@@ -412,14 +379,14 @@ useEffect(() => {
                   title="View user profile & membership"
                 >
                   <div className="size-6 rounded-full bg-helio text-white flex items-center justify-center text-xs font-bold">
-                    {authUser.full_name?.charAt(0).toUpperCase() || authUser.email.charAt(0).toUpperCase()}
+                    {authUser?.full_name?.charAt(0).toUpperCase() || authUser?.email?.charAt(0).toUpperCase() || "U"}
                   </div>
                   <div className="hidden sm:flex flex-col">
                     <span className="text-xs font-bold max-w-[90px] truncate leading-tight">
-                      {authUser.full_name || authUser.email.split("@")[0]}
+                      {authUser?.full_name || authUser?.email?.split("@")[0] || "User"}
                     </span>
                     <span className="text-[10px] font-semibold text-helio leading-tight">
-                      {authUser.role.toUpperCase()}
+                      {authUser?.role ? authUser.role.toUpperCase() : "USER"}
                     </span>
                   </div>
                 </button>
@@ -465,7 +432,7 @@ useEffect(() => {
               {/* Trust Badge */}
               <div className="inline-flex items-center gap-2 rounded-full border border-helio/25 bg-white/90 px-3.5 py-1.5 text-xs font-semibold text-helio shadow-xs backdrop-blur-sm">
                 <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Over 50+ Ready-to-Launch Business Website Templates</span>
+                <span>Over 10+ Ready-to-Launch Business Website Templates</span>
               </div>
 
               {/* Main Headline */}
@@ -580,17 +547,14 @@ useEffect(() => {
             </div>
 
             {/* Right Column: Hero Visual Showcase with Brand Rings & Interactive Preview */}
+            {/* Right Column: Hero Visual Showcase with Brand Word & Interactive Preview */}
             <div className="lg:col-span-5">
               <div className="relative mx-auto max-w-md lg:max-w-none">
-                {/* Visual CodeHelio Rings Animation */}
-                <div className="flex justify-center mb-6" aria-hidden>
-                  {rings.map((r, i) => (
-                    <div
-                      key={i}
-                      className={`ring ${r.cls}`}
-                      style={{ "--from": r.from, "--delay": r.delay } as React.CSSProperties}
-                    />
-                  ))}
+                {/* Visual CodeHelio Brand Text Animation */}
+                <div className="flex justify-center items-center mb-8" aria-hidden>
+                  <span className="text-5xl sm:text-4xl md:text-5xl lg:text-8xl font-black tracking-tight bg-gradient-to-r from-helio via-sky-500 to-indigo-600 bg-clip-text text-transparent animate-pulse drop-shadow-md">
+                    CodeHelio
+                  </span>
                 </div>
 
                 {/* Floating Preview Card with Top-Right Price Tag formatted in active currency */}
@@ -675,21 +639,23 @@ useEffect(() => {
             </p>
           </div>
 
-          {/* Quick Add Button (Restricted to Admin & Creator) & Active Counter */}
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-ink/60 bg-white px-3 py-1.5 rounded-xl border border-ink/10">
               Showing <strong className="text-ink">{filteredTemplates.length}</strong> templates
             </span>
-            {mounted && isAdminOrCreator && (
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                suppressHydrationWarning
-                className="inline-flex items-center gap-1.5 rounded-xl bg-helio px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-helio-dark transition cursor-pointer"
-              >
-                <Plus className="size-4" />
-                <span>Add Template</span>
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+
+             {mounted && isAdminOrCreator && (
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  suppressHydrationWarning
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-helio px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-helio-dark transition cursor-pointer"
+                >
+                  <Plus className="size-4" />
+                  <span>Add Template</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

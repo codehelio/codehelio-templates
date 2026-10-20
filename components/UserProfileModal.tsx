@@ -90,11 +90,11 @@ export default function UserProfileModal({
         <div className="flex items-center justify-between pb-4 border-b border-ink/10">
           <div className="flex items-center gap-3">
             <div className="flex size-11 items-center justify-center rounded-2xl bg-helio text-white font-bold text-lg shadow-sm">
-              {user.full_name?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
+              {user?.full_name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"}
             </div>
             <div>
-              <h3 className="text-lg font-bold text-ink">{user.full_name || user.email.split("@")[0]}</h3>
-              <p className="text-xs text-ink/60">{user.email}</p>
+              <h3 className="text-lg font-bold text-ink">{user?.full_name || user?.email?.split("@")[0] || "User"}</h3>
+              <p className="text-xs text-ink/60">{user?.email || ""}</p>
             </div>
           </div>
           <button
