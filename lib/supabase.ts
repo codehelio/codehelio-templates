@@ -164,3 +164,17 @@ export async function upgradeToChUser(
 
   return updated;
 }
+
+
+/**
+ * Generate a 6-digit OTP code for template application verification
+ */
+export function generateOtp(email: string): string {
+  // Generate a random 6-digit code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  
+  // Optionally, you can also store or log it for debugging
+  console.log(`Generated OTP for ${email}: ${code}`);
+  
+  return code;
+}

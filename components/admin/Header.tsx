@@ -1,6 +1,7 @@
 "use client";
 
-import { Menu, Bell, Search, User } from "lucide-react";
+import { Menu, Bell, Search, Globe, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -13,7 +14,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
         {/* Toggle Mobile Sidebar */}
         <button
           onClick={onMenuClick}
-          className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+          className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden cursor-pointer"
         >
           <Menu className="h-6 w-6" />
         </button>
@@ -30,8 +31,18 @@ export default function Header({ onMenuClick }: HeaderProps) {
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-4">
-        <button className="relative rounded-full p-2 text-slate-600 hover:bg-slate-100">
+      <div className="flex items-center gap-3">
+        {/* Go to Main Website Link */}
+        <Link
+          href="http://localhost:3000/"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition shadow-xs cursor-pointer"
+          title="Visit Public Website"
+        >
+          <Globe className="h-4 w-4 text-indigo-600" />
+          <span className="hidden md:inline">Go to Website</span>
+        </Link>
+
+        <button className="relative rounded-full p-2 text-slate-600 hover:bg-slate-100 cursor-pointer">
           <Bell className="h-5 w-5" />
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
         </button>
@@ -42,7 +53,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           </div>
           <div className="hidden text-left md:block">
             <p className="text-sm font-semibold text-slate-800">Admin User</p>
-            <p className="text-xs text-slate-500">admin@example.com</p>
+            <p className="text-xs text-slate-500">admin@codehelio.com</p>
           </div>
         </div>
       </div>
