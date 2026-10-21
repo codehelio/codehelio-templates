@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe"; // <-- Use getStripe instead of stripe
 import { recordMembershipPayment } from "@/lib/supabaseServer";
 import Stripe from "stripe";
 
 export async function POST(req: NextRequest) {
+  const stripe = getStripe(); // <-- Initialize lazily at runtime
   const body = await req.text();
   const headersList = await headers();
   const signature = headersList.get("stripe-signature");

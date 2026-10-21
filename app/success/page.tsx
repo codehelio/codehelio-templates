@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe"; // <-- Updated import
 import { recordMembershipPayment } from "@/lib/supabaseServer";
 import { CheckCircle2, ArrowRight, ShieldCheck, ShoppingBag } from "lucide-react";
 
@@ -9,6 +9,7 @@ interface SuccessPageProps {
 }
 
 export default async function Success({ searchParams }: SuccessPageProps) {
+  const stripe = getStripe(); // <-- Initialize lazily at runtime
   const { session_id } = await searchParams;
 
   if (!session_id) {
