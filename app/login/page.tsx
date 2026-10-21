@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   ShieldCheck,
   Zap,
+  Globe,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { authenticateUser, registerUser } from "@/lib/supabase";
@@ -111,11 +112,23 @@ export default function LoginPage() {
       className="relative min-h-screen w-full flex items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8 overflow-hidden"
       suppressHydrationWarning
     >
+      {/* Top Left Go Back Button */}
+      <div className="absolute top-6 left-6 z-20">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition shadow-sm cursor-pointer"
+          title="Visit Public Back"
+        >
+          <Globe className="h-4 w-4 text-helio" />
+          <span>Go to Back</span>
+        </Link>
+      </div>
+
       {/* Background Glows */}
       <div className="pointer-events-none absolute -top-40 -left-40 size-96 rounded-full bg-helio/15 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 size-96 rounded-full bg-sky-400/15 blur-3xl" />
 
-       <div className="w-full max-w-md" suppressHydrationWarning>
+      <div className="w-full max-w-md" suppressHydrationWarning>
         <div className="overflow-hidden rounded-3xl border border-ink/10 bg-white p-8 shadow-xl" suppressHydrationWarning>
           {/* Logo Header */}
           <div className="text-center" suppressHydrationWarning>

@@ -34,7 +34,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
       <div className="flex items-center gap-3">
         {/* Go to Main Website Link */}
         <Link
-          href="http://localhost:3000/"
+          href="/"
           className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition shadow-xs cursor-pointer"
           title="Visit Public Website"
         >
