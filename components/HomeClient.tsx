@@ -800,15 +800,14 @@ export default function HomeClient({ canceled }: { canceled?: boolean }) {
                 Upgrade to verified CH-User status for a one-time fee of LKR 600 ($1.82). Receive an email OTP code to verify your application.
               </p>
             </div>
-
             {/* Step 3 */}
             <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm transition hover:shadow-md">
               <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-bold text-lg">
                 3
               </div>
-              <h3 className="mt-4 text-xl font-bold text-ink">Deploy in 48 Hours</h3>
+              <h3 className="mt-4 text-xl font-bold text-ink">24/7 Dedicated Service</h3>
               <p className="mt-2 text-sm text-ink/70 leading-relaxed">
-                Quote your unique Client Code. Our team injects your brand content, connects your domain, and puts your website live online.
+                Quote your unique Client Code. Our team is available 24/7 to manage your brand setup, domain configuration, and continuous support.
               </p>
             </div>
           </div>
