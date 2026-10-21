@@ -59,6 +59,18 @@ export async function getStoredProfile(): Promise<UserProfile | null> {
 }
 
 /**
+ * Store or remove user profile in localStorage cache
+ */
+export function setStoredProfile(profile: UserProfile | null): void {
+  if (typeof window === "undefined") return;
+  if (profile) {
+    localStorage.setItem("user_profile", JSON.stringify(profile));
+  } else {
+    localStorage.removeItem("user_profile");
+  }
+}
+
+/**
  * Sign in user with email & password via Supabase Auth
  */
 export async function authenticateUser(email: string, pass: string): Promise<UserProfile> {
@@ -99,6 +111,7 @@ export async function authenticateUser(email: string, pass: string): Promise<Use
 
   return userProfile;
 }
+
 /**
  * Register a new user via Supabase Auth
  */
@@ -164,7 +177,6 @@ export async function upgradeToChUser(
 
   return updated;
 }
-
 
 /**
  * Generate a 6-digit OTP code for template application verification
