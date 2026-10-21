@@ -77,10 +77,10 @@ export default function Page() {
   // Load custom templates and user session from localStorage after mount
   useEffect(() => {
     setMounted(true);
-    // Thiba right-click gohle mo go document le ka gare ga iframe le ge e le efe
-    document.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-    });
+    // // Thiba right-click gohle mo go document le ka gare ga iframe le ge e le efe
+    // document.addEventListener("contextmenu", (e) => {
+    //   e.preventDefault();
+    // });
 
     async function initializeApp() {
       try {
