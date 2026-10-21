@@ -208,7 +208,7 @@ export default function LiveDemoModal({
             <RotateCw className="size-4" />
           </button>
 
-          <a
+          {/* <a
             href={template.demoUrl}
             target="_blank"
             rel="noopener noreferrer"
@@ -216,7 +216,7 @@ export default function LiveDemoModal({
           >
             <span>Open in Tab</span>
             <ExternalLink className="size-3" />
-          </a>
+          </a> */}
 
           <button
             type="button"

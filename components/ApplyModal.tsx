@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Template } from "@/lib/templates";
 import { UserProfile, generateOtp, verifyOtpCode } from "@/lib/supabase";
 import { useCurrency } from "@/lib/currency";
@@ -61,6 +61,17 @@ export default function ApplyModal({
   const [otpSentDemoCode, setOtpSentDemoCode] = useState("");
   const [otpError, setOtpError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState<number>(0);
+  const dispatchedEmailRef = useRef<string | null>(null);
+
+  // 1-minute countdown timer for OTP resends
+  useEffect(() => {
+    if (otpCountdown <= 0) return;
+    const interval = setInterval(() => {
+      setOtpCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [otpCountdown]);
 
   const { formatPrice } = useCurrency();
 
@@ -74,42 +85,101 @@ export default function ApplyModal({
       setOtpCode("");
       setOtpError(null);
 
-      // Automatically dispatch OTP to the user's email
-      const code = generateOtp(user.email);
-      setOtpSentDemoCode(code);
-      setIsOtpSent(true);
+      // Automatically dispatch OTP to user email only once per modal session to prevent duplicate spam
+      if (dispatchedEmailRef.current !== user.email) {
+        dispatchedEmailRef.current = user.email;
+        setOtpCountdown(60);
+
+        fetch("/api/otp/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email, purpose: `Apply for ${template.name}` }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.ok) {
+              setIsOtpSent(true);
+              if (data.previewCode) setOtpSentDemoCode(data.previewCode);
+            }
+          })
+          .catch(() => {
+            setIsOtpSent(true);
+          });
+      }
+    } else if (!isOpen) {
+      dispatchedEmailRef.current = null;
     }
   }, [isOpen, template, user]);
 
   if (!isOpen || !template || !user) return null;
 
-  const handleSendOrResendOtp = () => {
-    const code = generateOtp(email || user.email);
-    setOtpSentDemoCode(code);
-    setIsOtpSent(true);
-    setIsOtpVerified(false);
+  const handleSendOrResendOtp = async () => {
+    if (otpCountdown > 0) return;
+    setIsOtpSent(false);
     setOtpError(null);
-    Swal.fire({
-      icon: "info",
-      title: "OTP Dispatched",
-      text: `A 6-digit verification code has been dispatched to ${email || user.email}. (Demo Code: ${code})`,
-      confirmButtonColor: "#027cc7",
-    });
+    try {
+      const res = await fetch("/api/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email || user.email, purpose: `Apply for ${template.name}`, forceNew: true }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setOtpCountdown(60);
+        setIsOtpSent(true);
+        setIsOtpVerified(false);
+        if (data.previewCode) setOtpSentDemoCode(data.previewCode);
+        Swal.fire({
+          icon: "success",
+          title: "OTP Dispatched",
+          text: `A 6-digit security code has been sent to ${email || user.email}. Valid for 1 minute.`,
+          confirmButtonColor: "#027cc7",
+        });
+      } else {
+        setOtpError(data.error || "Failed to dispatch OTP.");
+      }
+    } catch {
+      setOtpError("Network error sending OTP. Please try again.");
+    }
   };
 
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
     setOtpError(null);
     if (!otpCode || otpCode.trim().length < 6) {
       setOtpError("Please enter the complete 6-digit code.");
       return;
     }
 
-    const isValid = verifyOtpCode(email || user.email, otpCode.trim());
-    if (isValid || otpCode.trim() === otpSentDemoCode) {
-      setIsOtpVerified(true);
-      setOtpError(null);
-    } else {
-      setOtpError("Invalid or expired OTP code. Please try again.");
+    try {
+      const res = await fetch("/api/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email || user.email, code: otpCode.trim() }),
+      });
+      const data = await res.json();
+      if (data.ok && data.verified) {
+        setIsOtpVerified(true);
+        setOtpError(null);
+        Swal.fire({
+          icon: "success",
+          title: "Email Verified",
+          text: "OTP verified successfully. You may now submit your application.",
+          timer: 1200,
+          showConfirmButton: false,
+        });
+      } else if (otpSentDemoCode && otpCode.trim() === otpSentDemoCode) {
+        setIsOtpVerified(true);
+        setOtpError(null);
+      } else {
+        setOtpError(data.error || "Invalid or expired OTP code. Please try again.");
+      }
+    } catch {
+      if (otpSentDemoCode && otpCode.trim() === otpSentDemoCode) {
+        setIsOtpVerified(true);
+        setOtpError(null);
+      } else {
+        setOtpError("Error verifying OTP. Please try again.");
+      }
     }
   };
 
@@ -138,13 +208,13 @@ export default function ApplyModal({
         body: JSON.stringify({
           clientCode,
           template: template.slug,
+          userId: user.id,
           fullName,
           businessName,
           email,
           phone,
           domain,
           notes,
-          userRole: user.role,
           otpVerified: true,
         }),
       });
@@ -154,11 +224,14 @@ export default function ApplyModal({
       setIsSubmitting(false);
       onClose();
       onSuccess(clientCode, template);
-    } catch {
+    } catch (err: any) {
       setIsSubmitting(false);
-      // Fallback success for local offline dev
-      onClose();
-      onSuccess(clientCode, template);
+      Swal.fire({
+        icon: "error",
+        title: "Submission Error",
+        text: err?.message || "Could not save your application. Please try again.",
+        confirmButtonColor: "#027cc7",
+      });
     }
   };
 
@@ -228,7 +301,7 @@ export default function ApplyModal({
           </div>
 
           <p className="mt-1 text-xs text-ink/70">
-            A 6-digit confirmation code was sent to <strong className="text-ink">{email || user.email}</strong>.
+            A 6-digit confirmation code was sent to <strong className="text-ink">{email || user.email}</strong> (Valid for <strong>1 minute</strong>).
             {otpSentDemoCode && !isOtpVerified && (
               <span className="ml-1 text-helio font-bold">
                 (Demo OTP: {otpSentDemoCode})
@@ -265,9 +338,10 @@ export default function ApplyModal({
                 <button
                   type="button"
                   onClick={handleSendOrResendOtp}
-                  className="rounded-xl border border-ink/20 bg-white px-3 py-2 text-xs font-semibold text-ink/70 hover:bg-mist transition cursor-pointer"
+                  disabled={otpCountdown > 0}
+                  className="rounded-xl border border-ink/20 bg-white px-3 py-2 text-xs font-semibold text-ink/70 hover:bg-mist transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  Resend
+                  {otpCountdown > 0 ? `Resend (${otpCountdown}s)` : "Resend"}
                 </button>
               </>
             ) : (

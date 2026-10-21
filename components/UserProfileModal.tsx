@@ -39,27 +39,35 @@ export default function UserProfileModal({
 
   const handleUpgradePayment = async () => {
     setUpgrading(true);
-
-    // Simulate payment processing
-    setTimeout(async () => {
-      const updated = await upgradeToChUser(user, 600, "LKR");
+    try {
+      const res = await fetch("/api/checkout_sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          name: "CodeHelio CH-User Upgrade",
+          description: `CH-User Upgrade for ${user.email}`,
+          amount: 1.82,
+          currency: "usd",
+          userId: user.id,
+          userEmail: user.email,
+        }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      throw new Error(data.error || "Could not create Stripe checkout session.");
+    } catch (err: unknown) {
+      console.error(err);
       setUpgrading(false);
-      onUserUpdated(updated);
-
       Swal.fire({
-        icon: "success",
-        title: "Upgraded to CH-User!",
-        html: `
-          <div style="text-align: left; font-size: 0.9rem;">
-            <p style="margin-bottom: 0.5rem;">🎉 Payment of <b>LKR 600 ($1.82)</b> confirmed.</p>
-            <p style="margin-bottom: 0.5rem;">Your account is now elevated to <b>CH-User</b>.</p>
-            <p style="color: #027cc7; font-weight: 600;">You can now Apply for any template and receive an email OTP code to confirm your application!</p>
-          </div>
-        `,
+        icon: "error",
+        title: "Checkout Error",
+        text: "Could not open Stripe Checkout. Please try again.",
         confirmButtonColor: "#027cc7",
       });
-      onClose();
-    }, 1200);
+    }
   };
 
   const getRoleBadge = (role: string) => {
