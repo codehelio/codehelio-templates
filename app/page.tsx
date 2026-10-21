@@ -76,8 +76,12 @@ export default function Page() {
   const { currency, toggleCurrency, formatPrice } = useCurrency();
 
   // Load custom templates and user session from localStorage after mount
-useEffect(() => {
+  useEffect(() => {
     setMounted(true);
+    // Thiba right-click gohle mo go document le ka gare ga iframe le ge e le efe
+    document.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
 
     async function initializeApp() {
       try {
@@ -645,7 +649,7 @@ useEffect(() => {
             </span>
             <div className="flex items-center gap-3">
 
-             {mounted && isAdminOrCreator && (
+              {mounted && isAdminOrCreator && (
                 <button
                   onClick={() => setIsAddModalOpen(true)}
                   suppressHydrationWarning
