@@ -69,7 +69,6 @@ export default function Page() {
   const [authUser, setAuthUser] = useState<UserProfile | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Currency Hook
