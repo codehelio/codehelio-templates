@@ -190,3 +190,11 @@ export function generateOtp(email: string): string {
   
   return code;
 }
+
+/**
+ * Verify OTP code (Simple mock or state-based verification)
+ */
+export function verifyOtpCode(inputCode: string, actualCode: string): boolean {
+  if (!inputCode || !actualCode) return false;
+  return inputCode.trim() === actualCode.trim();
+}
