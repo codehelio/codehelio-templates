@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getStripe } from "@/lib/stripe"; // <-- Updated import
+import { getStripe } from "@/lib/stripe";
 import { recordMembershipPayment } from "@/lib/supabaseServer";
 import { CheckCircle2, ArrowRight, ShieldCheck, ShoppingBag } from "lucide-react";
 
@@ -9,7 +9,6 @@ interface SuccessPageProps {
 }
 
 export default async function Success({ searchParams }: SuccessPageProps) {
-  const stripe = getStripe(); // <-- Initialize lazily at runtime
   const { session_id } = await searchParams;
 
   if (!session_id) {
@@ -33,6 +32,8 @@ export default async function Success({ searchParams }: SuccessPageProps) {
 
   let session;
   try {
+    // Initialize Stripe lazily here only when session_id is present
+    const stripe = getStripe();
     session = await stripe.checkout.sessions.retrieve(session_id, {
       expand: ["line_items", "payment_intent"],
     });
