@@ -1,8 +1,14 @@
 import "server-only";
 import Stripe from "stripe";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.warn("STRIPE_SECRET_KEY is not defined in environment variables.");
-}
+export const getStripe = () => {
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  
+  if (!apiKey) {
+    throw new Error("STRIPE_SECRET_KEY is missing from environment variables.");
+  }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+  return new Stripe(apiKey, {
+    // optional: apiVersion: "2025-02-24.acacia",
+  });
+};
